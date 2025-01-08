@@ -15,7 +15,7 @@ def get_google_sheets_service():
     service = build('sheets', 'v4', credentials=creds)
     return service
 
-def append_to_google_sheet(student_name, check_in=None, check_out=None, time_difference=None):
+def append_to_google_sheet(student_name, check_in=None, check_out="-", time_difference="-"):
     service = get_google_sheets_service()
     sheet = service.spreadsheets()
     data = [[
@@ -48,17 +48,17 @@ def update_google_sheet_checkout(student_name):
 
         updated = False
         for i, row in enumerate(values):
-            if len(row) >= 5 and row[1] == student_name and row[3] == '':
+            if len(row) >= 5 and row[1] == student_name and row[3] == "-":
                 check_in_time = datetime.strptime(row[2], '%H:%M:%S')
                 check_out_time = datetime.now()
                 row[3] = check_out_time.strftime('%H:%M:%S')
                 duration = check_out_time - check_in_time
                 row[4] = f"{duration.seconds // 3600}h {duration.seconds % 3600 // 60}m"
 
-                # Update the row in Google Sheets
+                # Update the row in Google Sheets (API rows are 1-indexed)
                 sheet.values().update(
                     spreadsheetId=SPREADSHEET_ID,
-                    range=f"Sheet1!A{i+1}:E{i+1}",
+                    range=f"Sheet1!A{i+2}:E{i+2}",
                     valueInputOption="USER_ENTERED",
                     body={"values": [row]}
                 ).execute()
@@ -79,7 +79,7 @@ def is_already_checked_in_google(student_name):
         values = result.get('values', [])
         
         for row in values:
-            if len(row) >= 4 and row[1] == student_name and row[3] == '':
+            if len(row) >= 4 and row[1] == student_name and row[3] == "-":
                 return True
         return False
 
@@ -87,9 +87,32 @@ def is_already_checked_in_google(student_name):
         st.error(f"Error reading Google Sheet: {e}")
         return False
 
+def fetch_student_names_from_google_sheet():
+    service = get_google_sheets_service()
+    sheet = service.spreadsheets()
+    try:
+        result = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range="Sheet1!H:H").execute()
+        values = result.get('values', [])
+        return [row[0] for row in values if row]
+    except Exception as e:
+        st.error(f"Error fetching student names from Google Sheet: {e}")
+        return []
+
+def fetch_student_names_from_file():
+    try:
+        with open("students.txt", "r") as file:
+            return [line.strip() for line in file.readlines()]
+    except FileNotFoundError:
+        st.warning("students.txt file not found. Please create the file with student names.")
+        return []
+
 # Streamlit UI
 st.title("Attendance Tracker")
-students = ["Student 1", "Student 2", "Student 3"]  # Replace with dynamic loading if needed
+
+# Fetch student names from both Google Sheets and students.txt
+students_from_file = fetch_student_names_from_file()
+students_from_google_sheet = fetch_student_names_from_google_sheet()
+students = list(set(students_from_file + students_from_google_sheet))  # Combine and remove duplicates
 
 if students:
     student_name = st.selectbox("Select a Student", students)
@@ -109,4 +132,4 @@ if students:
             else:
                 st.error(f"No check-in record found for {student_name}.")
 else:
-    st.error("No students found.")
+    st.error("No students found. Please add students to 'students.txt' or Google Sheets.")
