@@ -4,6 +4,10 @@ import tomllib
 from datetime import datetime
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
+import pytz  # Import the pytz library for timezone handling
+
+# Define the Chicago timezone
+CHICAGO_TZ = pytz.timezone('America/Chicago')
 
 # Google Sheets setup
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
@@ -23,7 +27,7 @@ def append_to_google_sheet(student_name, check_in=None, check_out=None, time_dif
     service = get_google_sheets_service()
     sheet = service.spreadsheets()
     data = [[
-        datetime.now().strftime('%Y-%m-%d'),
+        datetime.now(CHICAGO_TZ).strftime('%Y-%m-%d'),
         student_name,
         check_in,
         check_out,
@@ -57,7 +61,7 @@ def update_google_sheet_checkout(student_name):
             if len(row) >= 4 and row[1] == student_name and row[3] == "-":
                 # Parse the check-in time and calculate the time difference
                 check_in_time = datetime.strptime(row[2], '%H:%M')
-                check_out_time = datetime.now()
+                check_out_time = datetime.now(CHICAGO_TZ)
                 time_difference = check_out_time - check_in_time
 
                 # Format the time difference as "Xh Ym"
@@ -138,7 +142,7 @@ if students:
             if is_already_checked_in_google(student_name):
                 st.error(f"{student_name} is already checked in. Please check out first.")
             else:
-                check_in_time = datetime.now().strftime('%H:%M')
+                check_in_time = datetime.now(CHICAGO_TZ).strftime('%H:%M')
                 append_to_google_sheet(student_name, check_in=check_in_time, check_out="-", time_difference="-")
                 st.success(f"{student_name} checked in at {check_in_time}.")
         elif action == "Check Out":
