@@ -1,21 +1,25 @@
 import streamlit as st
 import csv
+import tomllib
 from datetime import datetime
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
 
 # Google Sheets setup
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+# SERVICE_ACCOUNT_FILE = 'secrets.toml'  # Replace with your service account key file
 SERVICE_ACCOUNT_FILE = 'service_account.json'  # Replace with your service account key file
 SPREADSHEET_ID = '1SzhjrM9pixwbfuW7PHB0q6vWIdI-6UH6zNmGB07XxbA'  # Replace with your Google Sheet ID
 
 # Authenticate Google Sheets API
 def get_google_sheets_service():
-    creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    creds = Credentials.from_service_account_info(st.secrets["google_service_account"], scopes=SCOPES)
+    # creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
     service = build('sheets', 'v4', credentials=creds)
     return service
 
-def append_to_google_sheet(student_name, check_in=None, check_out="-", time_difference="-"):
+
+def append_to_google_sheet(student_name, check_in=None, check_out=None, time_difference=None):
     service = get_google_sheets_service()
     sheet = service.spreadsheets()
     data = [[
@@ -44,27 +48,38 @@ def update_google_sheet_checkout(student_name):
         values = result.get('values', [])
 
         if not values:
+            st.error("No data found in the sheet.")
             return False
 
         updated = False
         for i, row in enumerate(values):
-            if len(row) >= 5 and row[1] == student_name and row[3] == "-":
-                check_in_time = datetime.strptime(row[2], '%H:%M:%S')
+            # Ensure row has enough columns and check for a matching entry
+            if len(row) >= 4 and row[1] == student_name and row[3] == "-":
+                # Parse the check-in time and calculate the time difference
+                check_in_time = datetime.strptime(row[2], '%H:%M')
                 check_out_time = datetime.now()
-                row[3] = check_out_time.strftime('%H:%M:%S')
-                duration = check_out_time - check_in_time
-                row[4] = f"{duration.seconds // 3600}h {duration.seconds % 3600 // 60}m"
+                time_difference = check_out_time - check_in_time
 
-                # Update the row in Google Sheets (API rows are 1-indexed)
+                # Format the time difference as "Xh Ym"
+                duration = f"{time_difference.seconds // 3600}h {time_difference.seconds % 3600 // 60}m"
+
+                # Update the row with checkout time and duration
+                row[3] = check_out_time.strftime('%H:%M')
+                row[4] = duration
+
+                # Update the specific row in Google Sheets (API rows are 1-indexed)
                 sheet.values().update(
                     spreadsheetId=SPREADSHEET_ID,
-                    range=f"Sheet1!A{i+2}:E{i+2}",
+                    range=f"Sheet1!A{i+1}:E{i+1}",  # Update the correct row
                     valueInputOption="USER_ENTERED",
                     body={"values": [row]}
                 ).execute()
+
                 updated = True
                 break
 
+        if not updated:
+            st.error(f"No check-in record found for {student_name}.")
         return updated
 
     except Exception as e:
@@ -123,8 +138,8 @@ if students:
             if is_already_checked_in_google(student_name):
                 st.error(f"{student_name} is already checked in. Please check out first.")
             else:
-                check_in_time = datetime.now().strftime('%H:%M:%S')
-                append_to_google_sheet(student_name, check_in=check_in_time)
+                check_in_time = datetime.now().strftime('%H:%M')
+                append_to_google_sheet(student_name, check_in=check_in_time, check_out="-", time_difference="-")
                 st.success(f"{student_name} checked in at {check_in_time}.")
         elif action == "Check Out":
             if update_google_sheet_checkout(student_name):
