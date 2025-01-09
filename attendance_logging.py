@@ -2,29 +2,32 @@ import streamlit as st
 import csv
 import tomllib
 from datetime import datetime
+import pytz
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
 
 # Google Sheets setup
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-# SERVICE_ACCOUNT_FILE = 'secrets.toml'  # Replace with your service account key file
 SERVICE_ACCOUNT_FILE = 'service_account.json'  # Replace with your service account key file
 SPREADSHEET_ID = '1SzhjrM9pixwbfuW7PHB0q6vWIdI-6UH6zNmGB07XxbA'  # Replace with your Google Sheet ID
+
+# Set Chicago timezone
+CHICAGO_TZ = pytz.timezone('America/Chicago')
 
 # Authenticate Google Sheets API
 def get_google_sheets_service():
     creds = Credentials.from_service_account_info(st.secrets["google_service_account"], scopes=SCOPES)
-    # creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
     service = build('sheets', 'v4', credentials=creds)
     return service
 
 def get_active_sheet_name(frequency="daily"):
+    now = datetime.now(CHICAGO_TZ)
     if frequency == "daily":
-        return datetime.now().strftime('%Y-%m-%d')
+        return now.strftime('%Y-%m-%d')
     elif frequency == "weekly":
-        return f"Week-{datetime.now().strftime('%U')}-{datetime.now().year}"
+        return f"Week-{now.strftime('%U')}-{now.year}"
     elif frequency == "monthly":
-        return datetime.now().strftime('%Y-%m')
+        return now.strftime('%Y-%m')
     else:
         raise ValueError("Invalid frequency. Choose 'daily', 'weekly', or 'monthly'.")
 
@@ -67,8 +70,9 @@ ensure_active_sheet_exists(active_sheet_name)  # Ensure the sheet exists
 def append_to_google_sheet(student_name, check_in=None, check_out=None, time_difference=None):
     service = get_google_sheets_service()
     sheet = service.spreadsheets()
+    now = datetime.now(CHICAGO_TZ)
     data = [[
-        datetime.now().strftime('%Y-%m-%d'),
+        now.strftime('%Y-%m-%d'),
         student_name,
         check_in,
         check_out,
@@ -99,8 +103,8 @@ def update_google_sheet_checkout(student_name):
         updated = False
         for i, row in enumerate(values):
             if len(row) >= 4 and row[1] == student_name and row[3] == "-":
-                check_in_time = datetime.strptime(row[2], '%H:%M')
-                check_out_time = datetime.now()
+                check_in_time = datetime.strptime(row[2], '%H:%M').replace(tzinfo=CHICAGO_TZ)
+                check_out_time = datetime.now(CHICAGO_TZ)
                 time_difference = check_out_time - check_in_time
 
                 duration = f"{time_difference.seconds // 3600}h {time_difference.seconds % 3600 // 60}m"
@@ -161,7 +165,7 @@ def fetch_student_names_from_file():
         return []
 
 # Streamlit UI
-st.title("Blooming Buds Daily Attendance Tracker")
+st.title("Attendance Tracker")
 
 # Fetch student names from both Google Sheets and students.txt
 students_from_file = fetch_student_names_from_file()
@@ -182,7 +186,7 @@ if students:
                 if is_already_checked_in_google(student_name):
                     st.error(f"{student_name} is already checked in. Please check out first.")
                 else:
-                    check_in_time = datetime.now().strftime('%H:%M')
+                    check_in_time = datetime.now(CHICAGO_TZ).strftime('%H:%M')
                     append_to_google_sheet(student_name, check_in=check_in_time, check_out="-", time_difference="-")
                     st.success(f"{student_name} checked in at {check_in_time}.")
             elif action == "Check Out":
