@@ -165,7 +165,7 @@ def fetch_student_names_from_google_sheet():
 #         return []
 
 # Streamlit UI
-st.title("Blooming Buds Student Attendance Tracker")
+st.title("Blooming Buds Student Check In")
 
 # Fetch student names from both Google Sheets and students.txt
 # students_from_file = fetch_student_names_from_file()
