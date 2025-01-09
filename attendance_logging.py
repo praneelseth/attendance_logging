@@ -156,21 +156,21 @@ def fetch_student_names_from_google_sheet():
         st.error(f"Error fetching student names from Google Sheet: {e}")
         return []
 
-def fetch_student_names_from_file():
-    try:
-        with open("students.txt", "r") as file:
-            return [line.strip() for line in file.readlines()]
-    except FileNotFoundError:
-        st.warning("students.txt file not found. Please create the file with student names.")
-        return []
+# def fetch_student_names_from_file():
+#     try:
+#         with open("students.txt", "r") as file:
+#             return [line.strip() for line in file.readlines()]
+#     except FileNotFoundError:
+#         st.warning("students.txt file not found. Please create the file with student names.")
+#         return []
 
 # Streamlit UI
 st.title("Attendance Tracker")
 
 # Fetch student names from both Google Sheets and students.txt
-students_from_file = fetch_student_names_from_file()
+# students_from_file = fetch_student_names_from_file()
 students_from_google_sheet = fetch_student_names_from_google_sheet()
-students = list(set(students_from_file + students_from_google_sheet))  # Combine and remove duplicates
+students = list(set(students_from_google_sheet))  # Combine and remove duplicates
 
 if students:
     students.insert(0, "Choose an option")  # Add placeholder option
@@ -193,4 +193,4 @@ if students:
                 if update_google_sheet_checkout(student_name):
                     st.success(f"{student_name} checked out.")
 else:
-    st.error("No students found. Please add students to 'students.txt' or Google Sheets.")
+    st.error("No students found. Please add students to Google Sheets.")
