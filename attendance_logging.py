@@ -64,7 +64,7 @@ def ensure_active_sheet_exists(sheet_name):
     except Exception as e:
         st.error(f"Error ensuring sheet exists: {e}")
 
-active_sheet_name = get_active_sheet_name(frequency="daily")
+active_sheet_name = get_active_sheet_name(frequency="monthly")
 ensure_active_sheet_exists(active_sheet_name)  # Ensure the sheet exists
 
 def append_to_google_sheet(student_name, check_in=None, check_out=None, time_difference=None):
