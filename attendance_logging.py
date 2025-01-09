@@ -1,54 +1,91 @@
 import streamlit as st
 import csv
-import tomllib
-from datetime import datetime
+from datetime import datetime, timedelta
+import pytz
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
-import pytz  # Import the pytz library for timezone handling
-
-# Define the Chicago timezone
-CHICAGO_TZ = pytz.timezone('America/Chicago')
 
 # Google Sheets setup
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-# SERVICE_ACCOUNT_FILE = 'secrets.toml'  # Replace with your service account key file
 SERVICE_ACCOUNT_FILE = 'service_account.json'  # Replace with your service account key file
 SPREADSHEET_ID = '1SzhjrM9pixwbfuW7PHB0q6vWIdI-6UH6zNmGB07XxbA'  # Replace with your Google Sheet ID
 
-# Authenticate Google Sheets API
 def get_google_sheets_service():
-    creds = Credentials.from_service_account_info(st.secrets["google_service_account"], scopes=SCOPES)
-    # creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
     service = build('sheets', 'v4', credentials=creds)
     return service
 
+# Timezone setup
+CHICAGO_TZ = pytz.timezone("America/Chicago")
 
-def append_to_google_sheet(student_name, check_in=None, check_out=None, time_difference=None):
+def get_current_time():
+    return datetime.now(pytz.utc).astimezone(CHICAGO_TZ)
+
+def get_current_sheet_name(frequency):
+    today = get_current_time().date()
+    if frequency == "daily":
+        return today.strftime("%Y-%m-%d")
+    elif frequency == "weekly":
+        start_of_week = today - timedelta(days=today.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
+        return f"Week {start_of_week.strftime('%Y-%m-%d')} to {end_of_week.strftime('%Y-%m-%d')}"
+    elif frequency == "monthly":
+        return today.strftime("%Y-%m")
+
+def ensure_sheet_exists(service, spreadsheet_id, sheet_name):
+    try:
+        sheet_metadata = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+        sheets = sheet_metadata.get('sheets', [])
+        sheet_titles = [sheet['properties']['title'] for sheet in sheets]
+
+        if sheet_name not in sheet_titles:
+            body = {
+                "requests": [
+                    {
+                        "addSheet": {
+                            "properties": {
+                                "title": sheet_name
+                            }
+                        }
+                    }
+                ]
+            }
+            service.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet_id,
+                body=body
+            ).execute()
+    except Exception as e:
+        st.error(f"Error ensuring sheet exists: {e}")
+
+def append_to_google_sheet(student_name, check_in=None, check_out=None, time_difference=None, frequency="daily"):
     service = get_google_sheets_service()
-    sheet = service.spreadsheets()
+    sheet_name = get_current_sheet_name(frequency)
+    ensure_sheet_exists(service, SPREADSHEET_ID, sheet_name)
     data = [[
-        datetime.now(CHICAGO_TZ).strftime('%Y-%m-%d'),
+        get_current_time().strftime('%Y-%m-%d'),
         student_name,
         check_in,
         check_out,
         time_difference
     ]]
     try:
-        sheet.values().append(
+        service.spreadsheets().values().append(
             spreadsheetId=SPREADSHEET_ID,
-            range="Sheet1!A:E",
+            range=f"{sheet_name}!A:E",
             valueInputOption="USER_ENTERED",
             body={"values": data}
         ).execute()
     except Exception as e:
         st.error(f"Error writing to Google Sheet: {e}")
 
-def update_google_sheet_checkout(student_name):
+def update_google_sheet_checkout(student_name, frequency="daily"):
     service = get_google_sheets_service()
-    sheet = service.spreadsheets()
+    sheet_name = get_current_sheet_name(frequency)
+    ensure_sheet_exists(service, SPREADSHEET_ID, sheet_name)
     try:
-        # Read all data from the sheet
-        result = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range="Sheet1!A:E").execute()
+        result = service.spreadsheets().values().get(
+            spreadsheetId=SPREADSHEET_ID, range=f"{sheet_name}!A:E"
+        ).execute()
         values = result.get('values', [])
 
         if not values:
@@ -57,28 +94,21 @@ def update_google_sheet_checkout(student_name):
 
         updated = False
         for i, row in enumerate(values):
-            # Ensure row has enough columns and check for a matching entry
             if len(row) >= 4 and row[1] == student_name and row[3] == "-":
-                # Parse the check-in time and calculate the time difference
-                check_in_time = datetime.strptime(row[2], '%H:%M')
-                check_out_time = datetime.now(CHICAGO_TZ)
+                check_in_time = datetime.strptime(row[2], '%H:%M').replace(tzinfo=CHICAGO_TZ)
+                check_out_time = get_current_time()
                 time_difference = check_out_time - check_in_time
-
-                # Format the time difference as "Xh Ym"
                 duration = f"{time_difference.seconds // 3600}h {time_difference.seconds % 3600 // 60}m"
 
-                # Update the row with checkout time and duration
                 row[3] = check_out_time.strftime('%H:%M')
                 row[4] = duration
 
-                # Update the specific row in Google Sheets (API rows are 1-indexed)
-                sheet.values().update(
+                service.spreadsheets().values().update(
                     spreadsheetId=SPREADSHEET_ID,
-                    range=f"Sheet1!A{i+1}:E{i+1}",  # Update the correct row
+                    range=f"{sheet_name}!A{i+1}:E{i+1}",
                     valueInputOption="USER_ENTERED",
                     body={"values": [row]}
                 ).execute()
-
                 updated = True
                 break
 
@@ -90,13 +120,16 @@ def update_google_sheet_checkout(student_name):
         st.error(f"Error updating Google Sheet: {e}")
         return False
 
-def is_already_checked_in_google(student_name):
+def is_already_checked_in_google(student_name, frequency="daily"):
     service = get_google_sheets_service()
-    sheet = service.spreadsheets()
+    sheet_name = get_current_sheet_name(frequency)
+    ensure_sheet_exists(service, SPREADSHEET_ID, sheet_name)
     try:
-        result = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range="Sheet1!A:E").execute()
+        result = service.spreadsheets().values().get(
+            spreadsheetId=SPREADSHEET_ID, range=f"{sheet_name}!A:E"
+        ).execute()
         values = result.get('values', [])
-        
+
         for row in values:
             if len(row) >= 4 and row[1] == student_name and row[3] == "-":
                 return True
@@ -128,6 +161,9 @@ def fetch_student_names_from_file():
 # Streamlit UI
 st.title("Attendance Tracker")
 
+# Frequency for creating new sheets
+frequency = st.selectbox("Select Frequency", ["daily", "weekly", "monthly"])
+
 # Fetch student names from both Google Sheets and students.txt
 students_from_file = fetch_student_names_from_file()
 students_from_google_sheet = fetch_student_names_from_google_sheet()
@@ -139,14 +175,14 @@ if students:
 
     if st.button("Submit"):
         if action == "Check In":
-            if is_already_checked_in_google(student_name):
+            if is_already_checked_in_google(student_name, frequency):
                 st.error(f"{student_name} is already checked in. Please check out first.")
             else:
-                check_in_time = datetime.now(CHICAGO_TZ).strftime('%H:%M')
-                append_to_google_sheet(student_name, check_in=check_in_time, check_out="-", time_difference="-")
+                check_in_time = get_current_time().strftime('%H:%M')
+                append_to_google_sheet(student_name, check_in=check_in_time, check_out="-", time_difference="-", frequency=frequency)
                 st.success(f"{student_name} checked in at {check_in_time}.")
         elif action == "Check Out":
-            if update_google_sheet_checkout(student_name):
+            if update_google_sheet_checkout(student_name, frequency):
                 st.success(f"{student_name} checked out.")
             else:
                 st.error(f"No check-in record found for {student_name}.")
