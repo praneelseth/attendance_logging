@@ -174,7 +174,7 @@ teachers = list(set(teachers_from_google_sheet))  # Combine and remove duplicate
 
 if teachers:
     teachers.insert(0, "Choose an option")  # Add placeholder option
-    teacher_name = st.selectbox("Select a Student", teachers)
+    teacher_name = st.selectbox("Select a Teacher", teachers)
 
     if teacher_name == "Choose an option":
         st.warning("Please select a valid teacher.")
