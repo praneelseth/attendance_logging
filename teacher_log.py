@@ -165,7 +165,7 @@ def fetch_teacher_names_from_google_sheet():
 #         return []
 
 # Streamlit UI
-st.title("Blooming Buds Teacher Punch Card")
+st.title("Blooming Buds Teacher Check In")
 
 # Fetch teacher names from both Google Sheets and teachers.txt
 # teachers_from_file = fetch_teacher_names_from_file()
