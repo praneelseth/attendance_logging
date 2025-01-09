@@ -153,7 +153,7 @@ def fetch_student_names_from_google_sheet():
         values = result.get('values', [])
         return [row[0] for row in values if row]
     except Exception as e:
-        st.error(f"Error fetching student names from Google Sheet: {e}")
+        st.error(f"Error fetching teacher names from Google Sheet: {e}")
         return []
 
 def fetch_student_names_from_file():
@@ -161,7 +161,7 @@ def fetch_student_names_from_file():
         with open("students.txt", "r") as file:
             return [line.strip() for line in file.readlines()]
     except FileNotFoundError:
-        st.warning("students.txt file not found. Please create the file with student names.")
+        st.warning("teachers.txt file not found. Please create the file with teacher names.")
         return []
 
 # Streamlit UI
@@ -174,10 +174,10 @@ students = list(set(students_from_file + students_from_google_sheet))  # Combine
 
 if students:
     students.insert(0, "Choose an option")  # Add placeholder option
-    student_name = st.selectbox("Select a Student", students)
+    student_name = st.selectbox("Select a Teacher", students)
 
     if student_name == "Choose an option":
-        st.warning("Please select a valid student.")
+        st.warning("Please select a valid teacher.")
     else:
         action = st.radio("Action", ["Check In", "Check Out"])
 
@@ -193,4 +193,4 @@ if students:
                 if update_google_sheet_checkout(student_name):
                     st.success(f"{student_name} checked out.")
 else:
-    st.error("No students found. Please add students to 'students.txt' or Google Sheets.")
+    st.error("No teachers found. Please add teachers to 'teachers.txt' or Google Sheets.")
