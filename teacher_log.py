@@ -67,13 +67,13 @@ def ensure_active_sheet_exists(sheet_name):
 active_sheet_name = get_active_sheet_name(frequency="daily")
 ensure_active_sheet_exists(active_sheet_name)  # Ensure the sheet exists
 
-def append_to_google_sheet(student_name, check_in=None, check_out=None, time_difference=None):
+def append_to_google_sheet(teacher_name, check_in=None, check_out=None, time_difference=None):
     service = get_google_sheets_service()
     sheet = service.spreadsheets()
     now = datetime.now(CHICAGO_TZ)
     data = [[
         now.strftime('%Y-%m-%d'),
-        student_name,
+        teacher_name,
         check_in,
         check_out,
         time_difference
@@ -88,7 +88,7 @@ def append_to_google_sheet(student_name, check_in=None, check_out=None, time_dif
     except Exception as e:
         st.error(f"Error writing to Google Sheet: {e}")
 
-def update_google_sheet_checkout(student_name):
+def update_google_sheet_checkout(teacher_name):
     service = get_google_sheets_service()
     sheet = service.spreadsheets()
     try:
@@ -102,7 +102,7 @@ def update_google_sheet_checkout(student_name):
 
         updated = False
         for i, row in enumerate(values):
-            if len(row) >= 4 and row[1] == student_name and row[3] == "-":
+            if len(row) >= 4 and row[1] == teacher_name and row[3] == "-":
                 check_in_time = datetime.strptime(row[2], '%H:%M').replace(tzinfo=CHICAGO_TZ)
                 check_out_time = datetime.now(CHICAGO_TZ)
                 time_difference = check_out_time - check_in_time
@@ -122,14 +122,14 @@ def update_google_sheet_checkout(student_name):
                 break
 
         if not updated:
-            st.error(f"No check-in record found for {student_name}.")
+            st.error(f"No check-in record found for {teacher_name}.")
         return updated
 
     except Exception as e:
         st.error(f"Error updating Google Sheet: {e}")
         return False
 
-def is_already_checked_in_google(student_name):
+def is_already_checked_in_google(teacher_name):
     service = get_google_sheets_service()
     sheet = service.spreadsheets()
     try:
@@ -137,7 +137,7 @@ def is_already_checked_in_google(student_name):
         values = result.get('values', [])
         
         for row in values:
-            if len(row) >= 4 and row[1] == student_name and row[3] == "-":
+            if len(row) >= 4 and row[1] == teacher_name and row[3] == "-":
                 return True
         return False
 
@@ -145,7 +145,7 @@ def is_already_checked_in_google(student_name):
         st.error(f"Error reading Google Sheet: {e}")
         return False
 
-def fetch_student_names_from_google_sheet():
+def fetch_teacher_names_from_google_sheet():
     service = get_google_sheets_service()
     sheet = service.spreadsheets()
     try:
@@ -156,41 +156,41 @@ def fetch_student_names_from_google_sheet():
         st.error(f"Error fetching teacher names from Google Sheet: {e}")
         return []
 
-def fetch_student_names_from_file():
-    try:
-        with open("students.txt", "r") as file:
-            return [line.strip() for line in file.readlines()]
-    except FileNotFoundError:
-        st.warning("teachers.txt file not found. Please create the file with teacher names.")
-        return []
+# def fetch_teacher_names_from_file():
+#     try:
+#         with open("teachers.txt", "r") as file:
+#             return [line.strip() for line in file.readlines()]
+#     except FileNotFoundError:
+#         st.warning("teachers.txt file not found. Please create the file with teacher names.")
+#         return []
 
 # Streamlit UI
 st.title("Attendance Tracker")
 
-# Fetch student names from both Google Sheets and students.txt
-students_from_file = fetch_student_names_from_file()
-students_from_google_sheet = fetch_student_names_from_google_sheet()
-students = list(set(students_from_file + students_from_google_sheet))  # Combine and remove duplicates
+# Fetch teacher names from both Google Sheets and teachers.txt
+# teachers_from_file = fetch_teacher_names_from_file()
+teachers_from_google_sheet = fetch_teacher_names_from_google_sheet()
+teachers = list(set(teachers_from_google_sheet))  # Combine and remove duplicates
 
-if students:
-    students.insert(0, "Choose an option")  # Add placeholder option
-    student_name = st.selectbox("Select a Teacher", students)
+if teachers:
+    teachers.insert(0, "Choose an option")  # Add placeholder option
+    teacher_name = st.selectbox("Select a Student", teachers)
 
-    if student_name == "Choose an option":
+    if teacher_name == "Choose an option":
         st.warning("Please select a valid teacher.")
     else:
         action = st.radio("Action", ["Check In", "Check Out"])
 
         if st.button("Submit"):
             if action == "Check In":
-                if is_already_checked_in_google(student_name):
-                    st.error(f"{student_name} is already checked in. Please check out first.")
+                if is_already_checked_in_google(teacher_name):
+                    st.error(f"{teacher_name} is already checked in. Please check out first.")
                 else:
                     check_in_time = datetime.now(CHICAGO_TZ).strftime('%H:%M')
-                    append_to_google_sheet(student_name, check_in=check_in_time, check_out="-", time_difference="-")
-                    st.success(f"{student_name} checked in at {check_in_time}.")
+                    append_to_google_sheet(teacher_name, check_in=check_in_time, check_out="-", time_difference="-")
+                    st.success(f"{teacher_name} checked in at {check_in_time}.")
             elif action == "Check Out":
-                if update_google_sheet_checkout(student_name):
-                    st.success(f"{student_name} checked out.")
+                if update_google_sheet_checkout(teacher_name):
+                    st.success(f"{teacher_name} checked out.")
 else:
-    st.error("No teachers found. Please add teachers to 'teachers.txt' or Google Sheets.")
+    st.error("No teachers found. Please add teachers to Google Sheets.")
