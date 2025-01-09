@@ -1,19 +1,23 @@
 import streamlit as st
 import csv
+import tomllib
 from datetime import datetime
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
 
 # Google Sheets setup
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+# SERVICE_ACCOUNT_FILE = 'secrets.toml'  # Replace with your service account key file
 SERVICE_ACCOUNT_FILE = 'service_account.json'  # Replace with your service account key file
 SPREADSHEET_ID = '1SzhjrM9pixwbfuW7PHB0q6vWIdI-6UH6zNmGB07XxbA'  # Replace with your Google Sheet ID
 
 # Authenticate Google Sheets API
 def get_google_sheets_service():
-    creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    creds = Credentials.from_service_account_info(st.secrets["google_service_account"], scopes=SCOPES)
+    # creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
     service = build('sheets', 'v4', credentials=creds)
     return service
+
 
 def append_to_google_sheet(student_name, check_in=None, check_out=None, time_difference=None):
     service = get_google_sheets_service()
