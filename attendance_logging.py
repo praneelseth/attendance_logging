@@ -179,7 +179,7 @@ st.set_page_config(
     layout="centered"  # Optional: Choose layout ("centered" or "wide")
 )
 # st.title("")
-st.markdown("<h1 style='font-size: 50px;'>✏️ Blooming Buds Student Check In</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='font-size: 40px;'>✏️ Blooming Buds Student Check In</h1>", unsafe_allow_html=True)
 
 # Fetch student names from both Google Sheets and students.txt
 # students_from_file = fetch_student_names_from_file()
