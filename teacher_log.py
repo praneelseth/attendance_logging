@@ -107,7 +107,7 @@ def update_google_sheet_checkout(teacher_name):
                 check_out_time = datetime.now(CHICAGO_TZ)
                 time_difference = check_out_time - check_in_time
                 
-                hours = time_difference.total_seconds() // 3600
+                hours = time_difference.seconds // 3600
                 minutes = (time_difference.total_seconds() % 3600) // 60 - 9  # Subtract 9 minutes directly
                 
                 # Adjust for negative minutes
