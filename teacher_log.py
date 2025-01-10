@@ -103,18 +103,13 @@ def update_google_sheet_checkout(teacher_name):
         updated = False
         for i, row in enumerate(values):
             if len(row) >= 4 and row[1] == teacher_name and row[3] == "-":
-                check_in_time = CHICAGO_TZ.localize(datetime.strptime(row[2], '%H:%M'))
+                check_in_time = datetime.strptime(row[2], '%H:%M').replace(tzinfo=CHICAGO_TZ)
                 check_out_time = datetime.now(CHICAGO_TZ)
                 time_difference = check_out_time - check_in_time
                 
-                # Calculate duration correctly
-                hours = time_difference.total_seconds() // 3600
-                minutes = (time_difference.total_seconds() % 3600) // 60
-                duration = f"{int(hours)}h {int(minutes)}m"
-                
+                duration = f"{time_difference.seconds // 3600}h {time_difference.seconds % 3600 // 60}m"
                 row[3] = check_out_time.strftime('%H:%M')
                 row[4] = duration
-
 
                 sheet.values().update(
                     spreadsheetId=SPREADSHEET_ID,
