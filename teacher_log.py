@@ -178,7 +178,8 @@ st.set_page_config(
     page_icon="🍎",  # Optional: Set a favicon or emoji
     layout="centered"  # Optional: Choose layout ("centered" or "wide")
 )
-st.title("🍎 Blooming Buds Teacher Check In")
+# st.title("")
+st.markdown("<h1 style='font-size: 40px;'>Blooming Buds Teacher Check In 🍎</h1>", unsafe_allow_html=True)
 
 # Fetch teacher names from both Google Sheets and teachers.txt
 # teachers_from_file = fetch_teacher_names_from_file()
