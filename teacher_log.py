@@ -174,7 +174,7 @@ def fetch_teacher_names_from_google_sheet():
 
 # Streamlit UI
 st.set_page_config(
-    page_title="Teacher Check In",  # Customize the tab title
+    page_title="🍎 Teacher Check In",  # Customize the tab title
     page_icon="🍎",  # Optional: Set a favicon or emoji
     layout="centered"  # Optional: Choose layout ("centered" or "wide")
 )
