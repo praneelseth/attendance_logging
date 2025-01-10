@@ -106,8 +106,16 @@ def update_google_sheet_checkout(student_name):
                 check_in_time = datetime.strptime(row[2], '%H:%M').replace(tzinfo=CHICAGO_TZ)
                 check_out_time = datetime.now(CHICAGO_TZ)
                 time_difference = check_out_time - check_in_time
+
+                hours = time_difference.total_seconds() // 3600
+                minutes = (time_difference.total_seconds() % 3600) // 60 - 9  # Subtract 9 minutes directly
                 
-                duration = f"{time_difference.seconds // 3600}h {time_difference.seconds % 3600 // 60}m"
+                # Adjust for negative minutes
+                if minutes < 0:
+                    hours -= 1
+                    minutes += 60
+                
+                duration = f"{int(hours)}h {int(minutes)}m"
                 row[3] = check_out_time.strftime('%H:%M')
                 row[4] = duration
 
