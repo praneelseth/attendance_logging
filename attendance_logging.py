@@ -11,6 +11,12 @@ SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 SERVICE_ACCOUNT_FILE = 'service_account.json'  # Replace with your service account key file
 SPREADSHEET_ID = '1SzhjrM9pixwbfuW7PHB0q6vWIdI-6UH6zNmGB07XxbA'  # Replace with your Google Sheet ID
 
+st.set_page_config(
+    page_title="Student Check In",  # Customize the tab title
+    page_icon="✏️",  # Optional: Set a favicon or emoji
+    layout="centered"  # Optional: Choose layout ("centered" or "wide")
+)
+
 # Set Chicago timezone
 CHICAGO_TZ = pytz.timezone('America/Chicago')
 
@@ -173,11 +179,6 @@ def fetch_student_names_from_google_sheet():
 #         return []
 
 # Streamlit UI
-st.set_page_config(
-    page_title="Student Check In",  # Customize the tab title
-    page_icon="✏️",  # Optional: Set a favicon or emoji
-    layout="centered"  # Optional: Choose layout ("centered" or "wide")
-)
 # st.title("")
 st.markdown("<h1 style='font-size: 40px;'>Blooming Buds Student Check In ✏️</h1>", unsafe_allow_html=True)
 
