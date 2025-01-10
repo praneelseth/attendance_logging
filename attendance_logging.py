@@ -173,7 +173,7 @@ students_from_google_sheet = fetch_student_names_from_google_sheet()
 students = list(set(students_from_google_sheet))  # Combine and remove duplicates
 
 if students:
-    students = list(set(students_from_file + students_from_google_sheet))  # Combine and remove duplicates
+    students = list(set(students_from_google_sheet))  # Combine and remove duplicates
     students = sorted(students)  # Sort names alphabetically
     students.insert(0, "Choose an option")  # Add placeholder option
     student_name = st.selectbox("Select a Student", students, index=0)  # Set default index to placeholder
