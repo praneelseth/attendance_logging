@@ -174,11 +174,11 @@ def fetch_student_names_from_google_sheet():
 
 # Streamlit UI
 st.set_page_config(
-    page_title="✏️ Student Check In",  # Customize the tab title
+    page_title="Student Check In",  # Customize the tab title
     page_icon="✏️",  # Optional: Set a favicon or emoji
     layout="centered"  # Optional: Choose layout ("centered" or "wide")
 )
-st.title("Blooming Buds Student Check In")
+st.title("✏️ Blooming Buds Student Check In")
 
 # Fetch student names from both Google Sheets and students.txt
 # students_from_file = fetch_student_names_from_file()
